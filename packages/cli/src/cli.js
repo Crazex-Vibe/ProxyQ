@@ -74,13 +74,13 @@ if (cmd === 'start') {
   const config      = loadConfig();
   const withDash    = args.includes('--dashboard');
 
-  const { createProxyQ } = require('../core/src/index');
+  const { createProxyQ } = require('../../core/src/index');
 
   createProxyQ(config).then(app => {
     app.start();
 
     if (withDash) {
-      const { DashboardServer } = require('../dashboard/src/server');
+      const { DashboardServer } = require('../../dashboard/src/server');
       const dash = new DashboardServer({
         port:       parseInt(process.env.PROXYQ_DASHBOARD_PORT || config.ports?.dashboard || '3002'),
         adminToken: process.env.PROXYQ_ADMIN_TOKEN || config.adminToken || 'changeme',
