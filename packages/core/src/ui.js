@@ -142,6 +142,45 @@ function waitingRoomHtml({ tokenId, position, estimatedWaitMs, wsUrl }) {
       margin-bottom: 24px;
     }
 
+    .session-banner {
+      display: none;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 10px;
+      padding: 14px 16px;
+      color: #92400e;
+      font-size: 13px;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+
+    .session-banner .session-title {
+      font-weight: 500;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .session-timer {
+      font-size: 28px;
+      font-weight: 600;
+      color: #b45309;
+      letter-spacing: -0.02em;
+    }
+
+    .session-timer.urgent { color: #dc2626; }
+
+    .expired-banner {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 10px;
+      padding: 16px;
+      color: #dc2626;
+      font-weight: 500;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
     .pulse {
       display: inline-block;
       width: 8px;
@@ -171,6 +210,16 @@ function waitingRoomHtml({ tokenId, position, estimatedWaitMs, wsUrl }) {
     <div class="admitted-banner" id="admitted-banner">
       <span class="pulse"></span>
       You're in! Redirecting now...
+    </div>
+
+    <div class="session-banner" id="session-banner">
+      <div class="session-title">Session time remaining</div>
+      <div class="session-timer" id="session-timer">—</div>
+      <div style="margin-top:4px;font-size:12px">Your session will end automatically. Save your work before it expires.</div>
+    </div>
+
+    <div class="expired-banner" id="expired-banner">
+      Your session has expired. You have been placed back in the queue.
     </div>
 
     <h1>You're in line</h1>
@@ -211,17 +260,57 @@ function waitingRoomHtml({ tokenId, position, estimatedWaitMs, wsUrl }) {
     let initialPosition = INITIAL_POS;
     let ws;
 
-    const $position   = document.getElementById('position');
-    const $wait       = document.getElementById('wait');
-    const $status     = document.getElementById('status-text');
-    const $progress   = document.getElementById('progress-bar');
-    const $admitted   = document.getElementById('admitted-banner');
-    const $subtitle   = document.getElementById('subtitle');
+    const $position     = document.getElementById('position');
+    const $wait         = document.getElementById('wait');
+    const $status       = document.getElementById('status-text');
+    const $progress     = document.getElementById('progress-bar');
+    const $admitted     = document.getElementById('admitted-banner');
+    const $subtitle     = document.getElementById('subtitle');
+    const $sessionBanner = document.getElementById('session-banner');
+    const $sessionTimer  = document.getElementById('session-timer');
+    const $expiredBanner = document.getElementById('expired-banner');
+
+    let sessionInterval = null;
 
     function formatWait(ms) {
       const secs = Math.ceil(ms / 1000);
       if (secs > 60) return '~' + Math.ceil(secs / 60) + ' min';
       return '~' + secs + ' sec';
+    }
+
+    function formatSeconds(s) {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return m + ':' + String(sec).padStart(2, '0');
+    }
+
+    function startSessionTimer(secondsLeft) {
+      $sessionBanner.style.display = 'block';
+      let remaining = secondsLeft;
+
+      $sessionTimer.textContent = formatSeconds(remaining);
+
+      if (sessionInterval) clearInterval(sessionInterval);
+      sessionInterval = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+          clearInterval(sessionInterval);
+          $sessionTimer.textContent = '0:00';
+          return;
+        }
+        $sessionTimer.textContent = formatSeconds(remaining);
+        // Go red in the last 30 seconds
+        if (remaining <= 30) $sessionTimer.classList.add('urgent');
+      }, 1000);
+    }
+
+    function onExpired() {
+      if (sessionInterval) clearInterval(sessionInterval);
+      $sessionBanner.style.display = 'none';
+      $expiredBanner.style.display = 'block';
+      $subtitle.textContent = 'Your session ended. You have been placed back in the queue.';
+      // Re-enqueue by reloading — server will issue a fresh token
+      setTimeout(() => window.location.reload(), 2500);
     }
 
     function setProgress(pos) {
@@ -258,6 +347,16 @@ function waitingRoomHtml({ tokenId, position, estimatedWaitMs, wsUrl }) {
 
         if (msg.type === 'admitted') {
           onAdmitted();
+          return;
+        }
+
+        if (msg.type === 'expired') {
+          onExpired();
+          return;
+        }
+
+        if (msg.type === 'session_expiring') {
+          startSessionTimer(msg.secondsLeft);
           return;
         }
 

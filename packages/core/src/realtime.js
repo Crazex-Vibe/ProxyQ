@@ -83,6 +83,16 @@ class RealtimeServer {
     }
   }
 
+  /**
+   * Notify a user their session has expired — they'll be re-queued.
+   */
+  notifyExpired(tokenId) {
+    const ws = this._clients.get(tokenId);
+    if (ws && ws.readyState === ws.OPEN) {
+      ws.send(JSON.stringify({ type: 'expired' }));
+    }
+  }
+
   // ─── Internal ─────────────────────────────────────────────────────────────
 
   async _broadcastPositions() {
@@ -91,8 +101,20 @@ class RealtimeServer {
     for (const [tokenId, ws] of this._clients.entries()) {
       if (ws.readyState === ws.OPEN) {
         await this._sendPosition(tokenId, ws);
+        await this._sendSessionWarning(tokenId, ws);
       }
     }
+  }
+
+  async _sendSessionWarning(tokenId, ws) {
+    try {
+      const session = await this.queue.getSessionInfo(tokenId);
+      if (!session) return;
+      // Send a warning when 30 seconds or less remain
+      if (session.secondsLeft > 0 && session.secondsLeft <= 30) {
+        ws.send(JSON.stringify({ type: 'session_expiring', secondsLeft: session.secondsLeft }));
+      }
+    } catch {}
   }
 
   async _sendPosition(tokenId, ws) {
