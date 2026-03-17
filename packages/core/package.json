@@ -1,0 +1,17 @@
+{
+  "name": "@proxyq/core",
+  "version": "0.1.0",
+  "description": "ProxyQ — lightweight virtual waiting room queue engine",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "http-proxy": "^1.18.1",
+    "ioredis": "^5.3.2",
+    "ws": "^8.16.0",
+    "uuid": "^9.0.0"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,47 @@
+version: '3.9'
+
+services:
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  proxyq:
+    build:
+      context: ../../packages/core
+      dockerfile: ../../deploy/docker/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${PROXYQ_PORT:-3000}:3000"       # public proxy port
+      - "${PROXYQ_WS_PORT:-3001}:3001"    # WebSocket port
+    environment:
+      PROXYQ_ORIGIN:             ${PROXYQ_ORIGIN:-http://your-origin-server}
+      PROXYQ_PORT:               3000
+      PROXYQ_WS_PORT:            3001
+      PROXYQ_WS_URL:             ${PROXYQ_WS_URL:-ws://localhost:3001}
+      PROXYQ_MAX_CONCURRENT:     ${PROXYQ_MAX_CONCURRENT:-100}
+      PROXYQ_ADMIT_PER_INTERVAL: ${PROXYQ_ADMIT_PER_INTERVAL:-10}
+      PROXYQ_INTERVAL_MS:        ${PROXYQ_INTERVAL_MS:-2000}
+      REDIS_HOST:                redis
+      REDIS_PORT:                6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/__proxyq/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  redis_data:

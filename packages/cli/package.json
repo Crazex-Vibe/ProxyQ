@@ -1,0 +1,21 @@
+{
+  "name": "proxyq",
+  "version": "0.1.0",
+  "description": "ProxyQ — lightweight self-hostable virtual waiting room",
+  "bin": {
+    "proxyq": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js start"
+  },
+  "dependencies": {
+    "@proxyq/core":      "*",
+    "@proxyq/dashboard": "*"
+  },
+  "keywords": ["queue", "waiting-room", "proxy", "ddos", "rate-limit", "self-hosted"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url":  "https://github.com/yourname/proxyq"
+  }
+}
